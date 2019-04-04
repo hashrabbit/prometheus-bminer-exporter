@@ -2,7 +2,7 @@
 
 ## Supported Metrics
 
-- [ ] current version
+- [x] current version
 - [ ] run time
 - [ ] accepted shares
 - [ ] rejected shares
