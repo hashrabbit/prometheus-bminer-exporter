@@ -6,8 +6,8 @@
 - [x] run time
 - [x] accepted shares
 - [x] rejected shares
-- [ ] accepted share rate
-- [ ] rejected share rate
+- [x] accepted share rate
+- [x] rejected share rate
 - [ ] solution rate
 
 We might later support these additional metrics:

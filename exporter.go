@@ -40,6 +40,10 @@ func newExporter() prometheus.Collector {
 				prometheus.BuildFQName(namespace, "stratum", "shares"),
 				"Bminer share submissions", []string{"status"}, nil,
 			),
+			"share_rate": prometheus.NewDesc(
+				prometheus.BuildFQName(namespace, "stratum", "share_rate"),
+				"Bminer share submission rate", []string{"status"}, nil,
+			),
 		},
 	}
 }
@@ -68,12 +72,15 @@ func (b *bminerExporter) Collect(ch chan<- prometheus.Metric) {
 
 	v := struct {
 		Stratum struct {
-			AcceptedShares uint64 `json:"accepted_shares"`
-			RejectedShares uint64 `json:"rejected_shares"`
+			AcceptedShares    uint64  `json:"accepted_shares"`
+			RejectedShares    uint64  `json:"rejected_shares"`
+			AcceptedShareRate float64 `json:"accepted_share_rate"`
+			RejectedShareRate float64 `json:"rejected_share_rate"`
 		} `json:"stratum"`
 		Version   string `json:"version"`
 		StartTime int64  `json:"start_time"`
 	}{}
+
 	if err = json.NewDecoder(res.Body).Decode(&v); err != nil {
 		log.Error(err)
 		b.apiUp.Set(0)
@@ -81,6 +88,8 @@ func (b *bminerExporter) Collect(ch chan<- prometheus.Metric) {
 
 	ch <- prometheus.MustNewConstMetric(b.stratumMetrics["shares"], prometheus.CounterValue, float64(v.Stratum.AcceptedShares), "accepted")
 	ch <- prometheus.MustNewConstMetric(b.stratumMetrics["shares"], prometheus.CounterValue, float64(v.Stratum.RejectedShares), "rejected")
+	ch <- prometheus.MustNewConstMetric(b.stratumMetrics["share_rate"], prometheus.CounterValue, v.Stratum.AcceptedShareRate, "accepted")
+	ch <- prometheus.MustNewConstMetric(b.stratumMetrics["share_rate"], prometheus.CounterValue, v.Stratum.RejectedShareRate, "rejected")
 
 	b.version.WithLabelValues(v.Version).Set(1)
 	b.version.Collect(ch)
