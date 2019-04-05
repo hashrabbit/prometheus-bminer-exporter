@@ -3,7 +3,7 @@
 ## Supported Metrics
 
 - [x] current version
-- [ ] run time
+- [x] run time
 - [x] accepted shares
 - [x] rejected shares
 - [ ] accepted share rate

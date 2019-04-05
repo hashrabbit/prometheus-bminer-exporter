@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
@@ -13,6 +14,7 @@ const namespace = "bminer"
 type bminerExporter struct {
 	apiUp          prometheus.Gauge
 	version        *prometheus.GaugeVec
+	uptime         *prometheus.Desc
 	stratumMetrics map[string]*prometheus.Desc
 }
 
@@ -29,6 +31,10 @@ func newExporter() prometheus.Collector {
 			Name:      "version",
 			Help:      "Version info of bminer",
 		}, []string{"version"}),
+		uptime: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "uptime_seconds"),
+			"Uptime of Bminer in seconds", nil, nil,
+		),
 		stratumMetrics: map[string]*prometheus.Desc{
 			"shares": prometheus.NewDesc(
 				prometheus.BuildFQName(namespace, "stratum", "shares"),
@@ -43,6 +49,8 @@ var _ prometheus.Collector = (*bminerExporter)(nil)
 func (b *bminerExporter) Describe(ch chan<- *prometheus.Desc) {
 	b.apiUp.Describe(ch)
 	b.version.Describe(ch)
+
+	ch <- b.uptime
 
 	for _, m := range b.stratumMetrics {
 		ch <- m
@@ -59,11 +67,12 @@ func (b *bminerExporter) Collect(ch chan<- prometheus.Metric) {
 	defer res.Body.Close()
 
 	v := struct {
-		Version string `json:"version"`
 		Stratum struct {
 			AcceptedShares uint64 `json:"accepted_shares"`
 			RejectedShares uint64 `json:"rejected_shares"`
 		} `json:"stratum"`
+		Version   string `json:"version"`
+		StartTime int64  `json:"start_time"`
 	}{}
 	if err = json.NewDecoder(res.Body).Decode(&v); err != nil {
 		log.Error(err)
@@ -75,6 +84,8 @@ func (b *bminerExporter) Collect(ch chan<- prometheus.Metric) {
 
 	b.version.WithLabelValues(v.Version).Set(1)
 	b.version.Collect(ch)
+
+	ch <- prometheus.MustNewConstMetric(b.uptime, prometheus.CounterValue, float64(time.Now().Unix()-v.StartTime))
 
 	b.apiUp.Set(1)
 }
