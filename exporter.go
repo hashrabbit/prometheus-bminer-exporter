@@ -8,32 +8,45 @@ import (
 	"github.com/prometheus/common/log"
 )
 
+const namespace = "bminer"
+
 type bminerExporter struct {
-	version *prometheus.GaugeVec
-	apiUp   prometheus.Gauge
+	apiUp          prometheus.Gauge
+	version        *prometheus.GaugeVec
+	stratumMetrics map[string]*prometheus.Desc
 }
 
 func newExporter() prometheus.Collector {
 	return &bminerExporter{
-		version: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: "bminer",
-			Name:      "version",
-			Help:      "Version info of bminer",
-		}, []string{"version"}),
 		apiUp: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: "bminer",
+			Namespace: namespace,
 			Subsystem: "api",
 			Name:      "up",
 			Help:      "Whether a scaping error has occurred",
 		}),
+		version: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "version",
+			Help:      "Version info of bminer",
+		}, []string{"version"}),
+		stratumMetrics: map[string]*prometheus.Desc{
+			"shares": prometheus.NewDesc(
+				prometheus.BuildFQName(namespace, "stratum", "shares"),
+				"Bminer share submissions", []string{"status"}, nil,
+			),
+		},
 	}
 }
 
 var _ prometheus.Collector = (*bminerExporter)(nil)
 
 func (b *bminerExporter) Describe(ch chan<- *prometheus.Desc) {
+	b.apiUp.Describe(ch)
 	b.version.Describe(ch)
-	ch <- b.apiUp.Desc()
+
+	for _, m := range b.stratumMetrics {
+		ch <- m
+	}
 }
 
 func (b *bminerExporter) Collect(ch chan<- prometheus.Metric) {
@@ -47,11 +60,18 @@ func (b *bminerExporter) Collect(ch chan<- prometheus.Metric) {
 
 	v := struct {
 		Version string `json:"version"`
+		Stratum struct {
+			AcceptedShares uint64 `json:"accepted_shares"`
+			RejectedShares uint64 `json:"rejected_shares"`
+		} `json:"stratum"`
 	}{}
 	if err = json.NewDecoder(res.Body).Decode(&v); err != nil {
 		log.Error(err)
 		b.apiUp.Set(0)
 	}
+
+	ch <- prometheus.MustNewConstMetric(b.stratumMetrics["shares"], prometheus.CounterValue, float64(v.Stratum.AcceptedShares), "accepted")
+	ch <- prometheus.MustNewConstMetric(b.stratumMetrics["shares"], prometheus.CounterValue, float64(v.Stratum.RejectedShares), "rejected")
 
 	b.version.WithLabelValues(v.Version).Set(1)
 	b.version.Collect(ch)

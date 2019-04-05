@@ -4,8 +4,8 @@
 
 - [x] current version
 - [ ] run time
-- [ ] accepted shares
-- [ ] rejected shares
+- [x] accepted shares
+- [x] rejected shares
 - [ ] accepted share rate
 - [ ] rejected share rate
 - [ ] solution rate
