@@ -8,7 +8,7 @@
 - [x] rejected shares
 - [x] accepted share rate
 - [x] rejected share rate
-- [ ] solution rate
+- [x] solution rate
 
 We might later support these additional metrics:
 
