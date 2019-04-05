@@ -1,4 +1,4 @@
-module github.com/hashrabbit/prometheus-bminer_exporter
+module github.com/hashrabbit/prometheus-bminer-exporter
 
 go 1.12
 
